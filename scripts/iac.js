@@ -2,13 +2,18 @@
 Made by Imrglop#9295
 imrglopyt.000webhostapp.com
 
+Features:
+- Anti nuker
+- Anti reach / autoclicker
+- Illegals
+
 Edit and improvement for EZ by Weissnix4711
-v0.2
+v0.3
 */
 
-//=============
-//== IMPORTS ==
-//=============
+//==============================
+//== INITIALISATION / IMPORTS ==
+//==============================
 
 import {
     iacConfig,
@@ -18,10 +23,6 @@ import {
 } from "./iacConfig.js";
 
 let system = server.registerSystem(0, 0);
-
-if (iacConfig.debugMode) {
-    console.log("IAC: Debug mode enabled.")
-}
 
 //===============
 //== FUNCTIONS ==
@@ -46,9 +47,9 @@ function logDebug(log) {
 //== MAIN ==
 //==========
 
-//INTERACT WITH ITEM - ILLEGALS
+//ILLEGALS - Item use
 system.listenForEvent("minecraft:entity_use_item", function(eventData) {
-    logDebug(`IAC: Player used item: `+ JSON.stringify(eventData.data, null, " "))
+    logDebug(`IAC: Player used item:\n\n` + JSON.stringify(eventData.data, null, " ") + `\n`)
     for (let i=0; i < iacIllegalItems.length; i++) {
         if (eventData.data.item_stack.item === "minecraft:"+iacIllegalItems[i]) {
             var pos = system.getComponent(eventData.data.entity, "minecraft:position").data
@@ -60,15 +61,13 @@ system.listenForEvent("minecraft:entity_use_item", function(eventData) {
     }
 })
 
-// Anti Reach
-// iacConfig.max client side reach is 3 excluding latency
-let currentTick = 0;
-
+//DPPS - Nuker
 system.listenForEvent("minecraft:player_destroyed_block", function(eventData) {
     let pos = system.getComponent(eventData.data.player, "minecraft:position").data;
     execute(`scoreboard players add @p[x=${(pos.x).toString()}, y=${(pos.y).toString()}, z=${(pos.z).toString()}] DPPS 1`)
 });
 
+//APPS + antireach
 system.listenForEvent("minecraft:player_attacked_entity", function(eventData) {
     if (eventData.data.attacked_entity) {
         //Do not flag if ender dragon
@@ -85,72 +84,75 @@ system.listenForEvent("minecraft:player_attacked_entity", function(eventData) {
 		if (system.getComponent(eventData.data.attacked_entity, "minecraft:health") === null || system.getComponent(eventData.data.player, "minecraft:health") === null) {return}
 
         if (attackedpos != null) {
-        let distX = (Math.abs(attackedpos.x - attackerpos.x))
-        let distY = (Math.abs(attackedpos.y - attackerpos.y))
-        let distZ = (Math.abs(attackedpos.z - attackerpos.z))
+            let distX = (Math.abs(attackedpos.x - attackerpos.x))
+            let distY = (Math.abs(attackedpos.y - attackerpos.y))
+            let distZ = (Math.abs(attackedpos.z - attackerpos.z))
 
-        logDebug(`${distX.toString()} ${distY.toString()} ${distZ.toString()}`);
+            logDebug(`${distX.toString()} ${distY.toString()} ${distZ.toString()}`);
 
-        if (attackedhealth.value != null) {
-            if (iacConfig.showHealthOnActionbar == 1) {
-                execute(`title @p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] actionbar §cHealth: ${(attackedhealth.value).toString()} / ${attackedhealth.max}`)
+            if (attackedhealth.value != null) {
+                if (iacConfig.showHealthOnActionbar == 1) {
+                    execute(`title @p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] actionbar §cHealth: ${(attackedhealth.value).toString()} / ${attackedhealth.max}`)
+                }
+            }
+            function test(results) {
+
+            }
+            system.executeCommand(`scoreboard players add @p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] APPS 1`, (commandResults) => test(commandResults))
+
+            logDebug("maxReach: " + reach.toString() + " iacConfig.maxReach:" + iacConfig.maxReach.toString());
+
+            if (distX >= iacConfig.maxReach || distZ >= iacConfig.maxReach) {
+                function commandCallBack(commandResults) {
+                }
+                execute(`tell @a[tag=staff] §r@p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] §cwas flagged for Reach hacks.§r`)
+                system.executeCommand(`execute @p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] ~ ~ ~ kick @s[tag=!staff] §cKicked by Console: ${iacMsg.reach}`, (commandResults) => commandCallBack(commandResults))
             }
         }
-        function test(results) {
-
-        }
-        system.executeCommand(`scoreboard players add @p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] APPS 1`, (commandResults) => test(commandResults))
-
-        logDebug("reach: "+reach.toString()+" iacConfig.maxreach:"+iacConfig.maxreach.toString());
-
-        if (distX >= iacConfig.maxreach || distZ >= iacConfig.maxreach) {
-            function commandCallBack(commandResults) {
-            }
-
-            execute(`tell @a[tag=staff] §r@p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] §cwas flagged for Reach hacks.§r`)
-            system.executeCommand(`execute @p[x=${(attackerpos.x).toString()}, y=${(attackerpos.y).toString()}, z=${(attackerpos.z).toString()}] ~ ~ ~ kick @s[tag=!staff] §cKicked by Console: ${iacMsg.reach}`, (commandResults) => commandCallBack(commandResults))
-        }
     }
-    }
-})
+});
 
-//SYSTEM UPDATE
+//===================
+//== SYSTEM UPDATE ==
+//===================
+
+var i = 0;
 let interval = setInterval(() => {
-    if (currentTick === 0) {
-        execute(`scoreboard objectives add GCD dummy GamingChairDebuff`)
-        execute(`scoreboard objectives add flytime dummy FlightTime`)
-        //execute(`scoreboard players set config.maxreach GCD 5`)
-        execute(`scoreboard objectives add afktime dummy TimeNotMoving`)
-        execute(`scoreboard players set flytime GCD 225`)
-        execute(`scoreboard objectives add APPS dummy AttackPackets`)
-        execute(`scoreboard players set afktime GCD 12000`)
-        execute("scoreboard players add showhealth GCD 0")
-        execute(`scoreboard objectives add timesflagged dummy TimesFlagged`)
-        execute(`scoreboard players add maxtimesflagged GCD 0`)
-        execute(`scoreboard objectives add DPPS dummy DestroyPackets`)
-        execute(`scoreboard playres add nukerinterval GCD 0`)
+    if (i == 0) {
+        logDebug("Setting scoreboards");
+        execute(`scoreboard objectives add GCD dummy GamingChairDebuff`);
+        execute(`scoreboard objectives add flytime dummy FlightTime`);
+        execute(`scoreboard players add flytime GCD 0`);
+        execute(`scoreboard objectives add afktime dummy TimeNotMoving`);
+        execute(`scoreboard players set flytime GCD 225`);
+        execute(`scoreboard objectives add APPS dummy AttackPackets`);
+        execute(`scoreboard players set afktime GCD 12000`);
+        execute("scoreboard players add showhealth GCD 0");
+        execute(`scoreboard objectives add timesflagged dummy TimesFlagged`);
+        execute(`scoreboard players add maxtimesflagged GCD 0`);
+        execute(`scoreboard objectives add DPPS dummy DestroyPackets`);
+        execute(`scoreboard players add nukerinterval GCD 0`);
     }
 
-    for (var i = 0; i < iacClipBlocks.length; i++) {
-        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~1 ~ ${iacClipBlocks[i]} -1 tell @a[tag=staff] §r@s[r=1000] §eis possibly using No-Clip (Clipped through block §aminecraft:${iacClipBlocks[i]}).`)
-        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~ ~ ${iacClipBlocks[i]} -1 tell @a[tag=staff] §r@s[r=1000] §eis possibly using No-Clip (Clipped through block §aminecraft:${iacClipBlocks[i]}).`)
-        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~1 ~ ${iacClipBlocks[i]} -1 effect @p instant_damage 1 0 true`)
-        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~ ~ ${iacClipBlocks[i]} -1 effect @p instant_damage 1 0 true`)
-        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~1 ~ ${iacClipBlocks[i]} -1 spreadplayers ~ ~ 0 1 @s`)
-        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~ ~ ${iacClipBlocks[i]} -1 spreadplayers ~ ~ 0 1 @s`)
+    //Block clipping
+    for (var j = 0; j < iacClipBlocks.length; j++) {
+        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~1 ~ ${iacClipBlocks[j]} -1 tell @a[tag=staff] §r@s[r=1000] §eis possibly using No-Clip (Clipped through block §aminecraft:${iacClipBlocks[j]}).`);
+        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~ ~ ${iacClipBlocks[j]} -1 tell @a[tag=staff] §r@s[r=1000] §eis possibly using No-Clip (Clipped through block §aminecraft:${iacClipBlocks[j]}).`);
+        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~1 ~ ${iacClipBlocks[j]} -1 effect @p instant_damage 1 0 true`);
+        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~ ~ ${iacClipBlocks[j]} -1 effect @p instant_damage 1 0 true`);
+        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~1 ~ ${iacClipBlocks[j]} -1 spreadplayers ~ ~ 0 1 @s`);
+        execute(`execute @a[tag=!staff] ~ ~ ~ detect ~ ~ ~ ${iacClipBlocks[j]} -1 spreadplayers ~ ~ 0 1 @s`);
     }
-
-    execute(`scoreboard players add flytime GCD 0`)
     
+    //flytime
     function cmdCallback(results) {
-        // statusMessage
         let statusMessage = results.data.statusMessage
         let subbed = (statusMessage.split(" "))
         iacConfig.maxFlyTime = Number(subbed[1])
-        //execute(`title @a actionbar iacConfig.max fly time:${iacConfig.maxFlyTime.toString()}`)
     }
     system.executeCommand("scoreboard players test flytime GCD -2147483648", (commandResults) => cmdCallback(commandResults))
 
+    //setShowHealth
     function setShowHealth(results) {
         // statusMessage
         let statusMessage = results.data.statusMessage
@@ -159,6 +161,7 @@ let interval = setInterval(() => {
     }
     system.executeCommand("scoreboard players test showhealth GCD -2147483648", (commandResults) => setShowHealth(commandResults))
 
+    //maxTimesFlagged
     function maxTimesFlagged(results) {
         // statusMessage
         let statusMessage = results.data.statusMessage
@@ -170,21 +173,6 @@ let interval = setInterval(() => {
         }
     }
     system.executeCommand("scoreboard players test maxtimesflagged GCD -2147483648", (commandResults) => maxTimesFlagged(commandResults))
-
-    /*
-    function maxDPPS(results) {
-        statusMessage
-        let statusMessage = results.data.statusMessage
-        let subbed = (statusMessage.split(" "))
-
-        if (Number(subbed[1]) != null) {
-            if (Number(subbed[1]) != 0) {
-                iacConfig.maxDPPSExtent = Number(subbed[1])
-            }
-        }
-    }
-    system.executeCommand("scoreboard players test nukerinterval GCD -2147483648", (commandResults) => maxDPPS(commandResults))
-    */
 
     //ILLEGAL
     for (let i=0; i < iacIllegalItems.length; i++) {
@@ -208,13 +196,14 @@ let interval = setInterval(() => {
     execute(`execute @a[scores={afktime=${iacConfig.maxAfkTimeInTicks}..}] ~ ~ ~ scoreboard players set @s afktime -301`)
     execute(`kick @a[scores={afktime=-301}] ${iacMsg.afk}`)
 
-    if (currentTick % 30 === 0) {
+    if (i % 30 === 0) {
         execute(`execute @a[scores={flytime=${Math.floor(iacConfig.maxFlyTime*0.60).toString()}..}] ~ ~ ~ execute @s ~ ~ ~ detect ~-1 ~-1 ~1 air 0 execute @s ~ ~ ~ detect ~ ~-1 ~-1 air 0 execute @s ~ ~ ~ detect ~-1 ~-1 ~ air 0 execute @s ~ ~-1 ~ detect ~1 ~-1 ~1 air 0 execute @s ~ ~ ~ detect ~1 ~-1 ~ air 0 execute @s ~ ~ ~ detect ~ ~-1 ~1 air 0 execute @s ~ ~ ~ detect ~-1 ~-1 ~-1 air 0 execute @s ~ ~ ~ detect ~1 ~-1 ~-1 air 0 execute @s ~ ~ ~ detect ~ ~-1 ~ air 0 tell @a[tag=staff] §6[GCD]§e @s[tag=!staff]§c is possibly fly-hacking.§r`)
         execute(`execute @a[scores={flytime=${Math.floor(iacConfig.maxFlyTime*0.60).toString()}..}] ~ ~ ~ execute @s ~ ~ ~ detect ~-1 ~-1 ~1 air 0 execute @s ~ ~ ~ detect ~ ~-1 ~-1 air 0 execute @s ~ ~ ~ detect ~-1 ~-1 ~ air 0 execute @s ~ ~-1 ~ detect ~1 ~-1 ~1 air 0 execute @s ~ ~ ~ detect ~1 ~-1 ~ air 0 execute @s ~ ~ ~ detect ~ ~-1 ~1 air 0 execute @s ~ ~ ~ detect ~-1 ~-1 ~-1 air 0 execute @s ~ ~ ~ detect ~1 ~-1 ~-1 air 0 execute @s ~ ~ ~ detect ~ ~-1 ~ air 0 spreadplayers ~ ~ 0 1 @s`)
     }
-    if (currentTick % 8 === 0) {
+
+    if (i % 8 === 0) {
         execute(`scoreboard players remove @a[scores={flytime=1..}] flytime 1`)
-    } else if (currentTick % 2 === 0) {
+    } else if (i % 2 === 0) {
         execute(`scoreboard players remove @a[scores={APPS=1..}] APPS 1`)
     }
 
@@ -237,19 +226,26 @@ let interval = setInterval(() => {
     execute(`tell @a[tag=GCDConfig] say GCD Config (/function gcd.help): ${JSON.stringify(iacConfig, null, " ")})`);   
     execute(`tag @a remove GCDConfig`);
 
-    if (currentTick === 10) {
-        execute('tellraw @a[tag=staff] {"rawtext":[{"text":"§6[GCD]§r GamingChairDebuff by Imrglop loaded. Do §3/function gcd.help§r for commands. Do /tag <Your Name> add staff to get Admin."}]}');
-        execute(`tellraw @a[tag=staff] {"rawtext":[{"text":"§6[GCD]§r GCD Config (settings): ${JSON.stringify(iacConfig, null, " ")}."}]}`)
-    }
-
     execute("scoreboard players add @a[scores={flytime=..-1}] flytime 1");
 
-    currentTick ++;
-
-    //TimesFlagged Kick
+    //Ban
     execute(`kick @a[scores={timesflagged=${iacConfig.maxTimesFlagged.toString()}..}, tag=!staff] §4You have been permanently banned for §cCheating§4. Please contact the server administrators to appeal or if you think this is an error.§r`)
     execute(`scoreboard players reset @a DPPS`)
+
+    i ++;
 }, iacConfig.intervalTime);
 
-//Log on script load
-console.log("iac.js loaded")
+//=================
+//== SCRIPT LOAD ==
+//=================
+
+console.log("iac.js loaded");
+
+//Old startup information:
+//§6[GCD]§r GamingChairDebuff by Imrglop loaded. Do §3/function gcd.help§r for commands. Do /tag <Your Name> add staff to get Admin.
+
+if (iacConfig.debugMode) {
+    console.log("IAC: Debug mode enabled.");
+}
+
+logDebug("Selected config:\n\n" + JSON.stringify(iacConfig, null, "") + `\n`);

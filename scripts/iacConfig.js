@@ -5,9 +5,9 @@ export var iacConfig = {
     maxFlyTime: 300,
     maxAPPSExtent: 30,
     maxTimesFlagged: 5,
-    maxreach: 5.1,
+    maxReach: 5.1,
     maxDPPSExtent: 20,
-    intervalTime: 10
+    intervalTime: 10 //Leave at 1
 }
 
 export var iacMsg = {
